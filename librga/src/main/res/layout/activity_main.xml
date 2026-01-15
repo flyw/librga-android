@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/tvTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="RGA JNI Test"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginBottom="16dp"/>
+
+        <TextView
+            android:id="@+id/tvResult"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Test Results:"
+            android:textSize="16sp"
+            android:layout_marginBottom="16dp"/>
+
+        <ImageView
+            android:id="@+id/ivOriginal"
+            android:layout_width="200dp"
+            android:layout_height="200dp"
+            android:layout_gravity="center"
+            android:layout_marginBottom="16dp"
+            android:scaleType="fitCenter"
+            android:contentDescription="Original Image" />
+
+        <ImageView
+            android:id="@+id/ivProcessed"
+            android:layout_width="200dp"
+            android:layout_height="200dp"
+            android:layout_gravity="center"
+            android:layout_marginBottom="16dp"
+            android:scaleType="fitCenter"
+            android:contentDescription="Processed Image" />
+
+        <Button
+            android:id="@+id/btnRunAllTests"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Run All Tests"
+            android:layout_marginBottom="8dp"/>
+
+        <Button
+            android:id="@+id/btnTestCopy"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Test Copy"
+            android:layout_marginBottom="8dp"/>
+
+        <Button
+            android:id="@+id/btnTestResize"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Test Resize"
+            android:layout_marginBottom="8dp"/>
+
+        <Button
+            android:id="@+id/btnTestCrop"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Test Crop"
+            android:layout_marginBottom="8dp"/>
+
+        <Button
+            android:id="@+id/btnTestRotate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Test Rotate"
+            android:layout_marginBottom="8dp"/>
+
+        <Button
+            android:id="@+id/btnTestFlip"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Test Flip"
+            android:layout_marginBottom="8dp"/>
+
+        <Button
+            android:id="@+id/btnTestTranslate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Test Translate"
+            android:layout_marginBottom="8dp"/>
+
+        <Button
+            android:id="@+id/btnTestBlend"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Test Blend"
+            android:layout_marginBottom="8dp"/>
+
+        <Button
+            android:id="@+id/btnTestConvertColor"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Test Color Conversion"
+            android:layout_marginBottom="8dp"/>
+
+        <Button
+            android:id="@+id/btnTestFill"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Test Fill"
+            android:layout_marginBottom="8dp"/>
+
+    </LinearLayout>
+</ScrollView>
