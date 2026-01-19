@@ -10,6 +10,7 @@ This project is an **Android build package** and Kotlin wrapper for Rockchip's *
 *   **RGA2 Limitation**: The RGA2 hardware is primarily designed for a 32-bit addressing space. On Android devices with more than 4GB of RAM, memory allocated by the application layer (like `Bitmap` or generic physical continuous memory) is likely to reside in **high addresses above 4GB**.
 *   **Failure Symptoms**: When RGA2 attempts to access these high addresses, it causes address overflow, leading to hardware errors, illegal memory access, or kernel crashes (often seen in `dmesg` as `RGA2 invalid address`).
 *   **RGA3 Advantage**: RGA3 cores support 40-bit+ addressing, making them the only reliable choice for hardware acceleration on devices with 8GB, 16GB, or more RAM.
+*   **⚠️ Special Case: Fill Operation**: Even if RGA3 scheduling is forced, the **color fill** operation may still fail if the memory address exceeds 4GB. This is because the hardware `fill` feature is unique to the RGA2 core; the system automatically falls back to RGA2 for this operation, thus re-introducing the 4GB limitation. (Refer to the official Rockchip FAQ).
 
 ### 2. Multi-Core Scheduling
 RGA3 typically includes multiple cores (Core0, Core1). This project uses the `imconfig` interface to explicitly schedule tasks to RGA3 cores, avoiding unpredictable failures caused by the system defaulting to RGA2.
@@ -25,21 +26,48 @@ RGA3 typically includes multiple cores (Core0, Core1). This project uses the `im
 
 ## Quick Start
 
-### 0. Build the Library
-Run the following command to compile the library and generate the AAR package:
+### 0. Running the Demo / Building the Library
 
-```bash
-./gradlew :librga:assembleRelease
-```
+By default, the `librga` module is configured as an **Android Application** (`com.android.application`) so you can directly install and run it on a Rockchip device to verify functionality.
 
-### 1. Force Enable RGA3 Scheduling (Crucial!)
-In your application initialization or before calling specific RGA functions, explicitly set the scheduler configuration:
+**To run the test application:**
+1.  Open the project in Android Studio.
+2.  Run the `librga` configuration.
+3.  You will see the **RGA JNI Test** interface where you can run individual tests (Copy, Resize, Crop, etc.) or all tests at once.
+
+![RGA Test App Screenshot](screenshot.png)
+
+**To build the AAR Library:**
+1.  Open `librga/build.gradle`.
+2.  Change the plugin from `com.android.application` to `com.android.library`.
+    ```gradle
+    plugins {
+        // id 'com.android.application' // Comment this out
+        id 'com.android.library'        // Use this for AAR build
+        id 'org.jetbrains.kotlin.android'
+    }
+    ```
+3.  Remove or comment out the `applicationId` in `defaultConfig`:
+    ```gradle
+    defaultConfig {
+        // applicationId "com.rockchip.librga" // Remove for library build
+        ...
+    }
+    ```
+4.  Run the assemble task:
+    ```bash
+    ./gradlew :librga:assembleRelease
+    ```
+5.  The AAR will be generated at `librga/build/outputs/aar/librga-release.aar`.
+
+### 1. RGA3 Scheduling (Automatic)
+The library automatically configures the scheduler to use RGA3 cores (Core0 or Core1) upon initialization. This is critical to avoid crashes on large memory Android devices (4GB+) due to RGA2 limitations.
+
+You can manually override this configuration if needed:
 
 ```kotlin
 import com.rockchip.librga.Rga
 
-// Force usage of RGA3 cores (Core0 or Core1)
-// This is critical to avoid crashes on large memory Android devices due to RGA2 limitations.
 Rga.imconfig(
     Rga.IM_CONFIG_SCHEDULER_CORE, 
     (Rga.IM_SCHEDULER_RGA3_CORE0 or Rga.IM_SCHEDULER_RGA3_CORE1).toLong()
@@ -413,26 +441,15 @@ fun createRgaBufferFromNv21(nv21Data: ByteArray, width: Int, height: Int, format
 val buffer = Rga.createRgaBufferFromNv21(nv21ByteArray, width, height)
 ```
 
-#### Converting NV21 Data to Bitmap
+#### Filling RGA Buffer with NV21 Data
 
 ```kotlin
-fun nv21ToBitmap(nv21Data: ByteArray, width: Int, height: Int): android.graphics.Bitmap
+fun fillRgaBufferWithNv21(buffer: java.nio.ByteBuffer, nv21Data: ByteArray, width: Int, height: Int, format: Int = Rga.RK_FORMAT_YCrCb_420_SP): RgaBuffer
 ```
 
 **Example:**
 ```kotlin
-val bitmap = Rga.nv21ToBitmap(nv21ByteArray, width, height)
-```
-
-#### Converting Bitmap to NV21 Data
-
-```kotlin
-fun bitmapToNv21(bitmap: android.graphics.Bitmap): ByteArray
-```
-
-**Example:**
-```kotlin
-val nv21Data = Rga.bitmapToNv21(bitmap)
+val buffer = Rga.fillRgaBufferWithNv21(existingByteBuffer, nv21ByteArray, width, height)
 ```
 
 ## Re-packaging Instructions

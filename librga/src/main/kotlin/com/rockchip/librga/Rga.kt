@@ -8,6 +8,10 @@ import java.nio.ByteBuffer
 object Rga {
     init {
         System.loadLibrary("rga_jni")
+        imconfig(
+            IM_CONFIG_SCHEDULER_CORE,
+            (IM_SCHEDULER_RGA3_CORE0 or IM_SCHEDULER_RGA3_CORE1).toLong()
+        )
     }
 
     // Constants from RgaUtils.h / im2d_type.h (Simplified for common usage)
@@ -43,7 +47,7 @@ object Rga {
     const val RK_FORMAT_RGBA_5551 = 0x5
     const val RK_FORMAT_RGBA_4444 = 0x6
     const val RK_FORMAT_BGR_888 = 0x7
-    
+
     const val RK_FORMAT_YCbCr_422_SP = 0x8
     const val RK_FORMAT_YCbCr_422_P  = 0x9
     const val RK_FORMAT_YCbCr_420_SP = 0xa
@@ -144,13 +148,13 @@ object Rga {
      * value: Configuration value, e.g., IM_SCHEDULER_RGA3_CORE0 or IM_SCHEDULER_RGA3_CORE1
      */
     external fun imconfig(name: Int, value: Long): Int
-    
+
     // Helpers to create RgaBuffer
-    private fun createBufferFromFd(fd: Int, width: Int, height: Int, format: Int, wstride: Int = width, hstride: Int = height): RgaBuffer {
+    fun createBufferFromFd(fd: Int, width: Int, height: Int, format: Int, wstride: Int = width, hstride: Int = height): RgaBuffer {
         return RgaBuffer(width, height, format, wstride, hstride, fd = fd)
     }
 
-    private fun createBufferFromByteBuffer(buffer: ByteBuffer, width: Int, height: Int, format: Int, wstride: Int = width, hstride: Int = height): RgaBuffer {
+    fun createBufferFromByteBuffer(buffer: ByteBuffer, width: Int, height: Int, format: Int, wstride: Int = width, hstride: Int = height): RgaBuffer {
         if (!buffer.isDirect) {
             throw kotlin.IllegalArgumentException("ByteBuffer must be direct")
         }
@@ -179,6 +183,19 @@ object Rga {
             height,
             format
         )
+    }
+
+    /**
+     * Helper to create RgaBuffer from an existing direct ByteBuffer containing NV21 data.
+     */
+    fun fillRgaBufferWithNv21(buffer: ByteBuffer, nv21Data: ByteArray, width: Int, height: Int, format: Int = Rga.RK_FORMAT_YCrCb_420_SP): RgaBuffer {
+        buffer.clear()
+        if (buffer.capacity() < nv21Data.size) {
+            throw IllegalArgumentException("ByteBuffer capacity too small")
+        }
+        buffer.put(nv21Data)
+        buffer.rewind()
+        return createBufferFromByteBuffer(buffer, width, height, format)
     }
 
     fun copyRgaBufferToBitmap(srcBuffer: RgaBuffer, dstBitmap: android.graphics.Bitmap) {
