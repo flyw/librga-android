@@ -2,12 +2,62 @@
 
 This project is an **Android build package** and Kotlin wrapper for Rockchip's **librga** (im2d API). It provides hardware-accelerated 2D graphics operations optimized for Rockchip SoCs, including pre-compiled native binaries and an easy-to-use JNI interface.
 
+## ⚠️ Core Requirement: Why RGA3?
+
+**This project defaults to and strongly recommends forcing the use of RGA3 cores for scheduling.**
+
+### 1. Breaking the 4GB Memory Limit
+*   **RGA2 Limitation**: The RGA2 hardware is primarily designed for a 32-bit addressing space. On Android devices with more than 4GB of RAM, memory allocated by the application layer (like `Bitmap` or generic physical continuous memory) is likely to reside in **high addresses above 4GB**.
+*   **Failure Symptoms**: When RGA2 attempts to access these high addresses, it causes address overflow, leading to hardware errors, illegal memory access, or kernel crashes (often seen in `dmesg` as `RGA2 invalid address`).
+*   **RGA3 Advantage**: RGA3 cores support 40-bit+ addressing, making them the only reliable choice for hardware acceleration on devices with 8GB, 16GB, or more RAM.
+
+### 2. Multi-Core Scheduling
+RGA3 typically includes multiple cores (Core0, Core1). This project uses the `imconfig` interface to explicitly schedule tasks to RGA3 cores, avoiding unpredictable failures caused by the system defaulting to RGA2.
+
+---
+
 ## Features
 
 - **Pre-compiled Binaries**: Includes optimized `librga.so` and `librga.a` for `arm64-v8a` and `armeabi-v7a`.
 - **Hardware Acceleration**: Full support for Rockchip's RGA hardware engine.
 - **Kotlin Wrapper**: Clean, idiomatic Kotlin API for image processing.
 - **Comprehensive Operations**: Support for resize, crop, rotate, flip, blend, and color space conversion (NV21/RGBA/etc.).
+
+## Quick Start
+
+### 0. Build the Library
+Run the following command to compile the library and generate the AAR package:
+
+```bash
+./gradlew :librga:assembleRelease
+```
+
+### 1. Force Enable RGA3 Scheduling (Crucial!)
+In your application initialization or before calling specific RGA functions, explicitly set the scheduler configuration:
+
+```kotlin
+import com.rockchip.librga.Rga
+
+// Force usage of RGA3 cores (Core0 or Core1)
+// This is critical to avoid crashes on large memory Android devices due to RGA2 limitations.
+Rga.imconfig(
+    Rga.IM_CONFIG_SCHEDULER_CORE, 
+    (Rga.IM_SCHEDULER_RGA3_CORE0 or Rga.IM_SCHEDULER_RGA3_CORE1).toLong()
+)
+```
+
+### 2. Example: Resize Operation
+```kotlin
+val srcBuffer = Rga.createRgaBufferFromBitmap(srcBitmap)
+val dstBuffer = Rga.createRgaBufferFromBitmap(dstBitmap)
+
+// Call hardware resize
+val result = Rga.imresize(srcBuffer, dstBuffer)
+
+if (result == Rga.IM_STATUS_SUCCESS) {
+    Rga.copyRgaBufferToBitmap(dstBuffer, dstBitmap)
+}
+```
 
 ## Project Structure
 
@@ -91,6 +141,13 @@ const val RK_FORMAT_YCrCb_422_SP = 0xc
 const val RK_FORMAT_YCrCb_422_P  = 0xd
 const val RK_FORMAT_YCrCb_420_SP = 0xe
 const val RK_FORMAT_YCrCb_420_P  = 0xf
+
+// Scheduler configuration
+const val IM_CONFIG_SCHEDULER_CORE = 0
+const val IM_SCHEDULER_RGA3_CORE0 = 1 shl 0
+const val IM_SCHEDULER_RGA3_CORE1 = 1 shl 1
+const val IM_SCHEDULER_RGA2_CORE0 = 1 shl 2
+const val IM_SCHEDULER_RGA2_CORE1 = 1 shl 3
 ```
 
 ### Data Classes
@@ -269,6 +326,21 @@ external fun imfill(dst: RgaBuffer, rect: RgaRect, color: Int): Int
 val fillRect = Rga.RgaRect(50, 50, 100, 100)
 val dstBuffer = Rga.createRgaBufferFromBitmap(destinationBitmap)
 val result = Rga.imfill(dstBuffer, fillRect, Color.RED)
+```
+
+#### Configuration
+Sets RGA configuration, such as scheduler core.
+
+```kotlin
+external fun imconfig(name: Int, value: Long): Int
+```
+
+**Example:**
+```kotlin
+Rga.imconfig(
+    Rga.IM_CONFIG_SCHEDULER_CORE, 
+    (Rga.IM_SCHEDULER_RGA3_CORE0 or Rga.IM_SCHEDULER_RGA3_CORE1).toLong()
+)
 ```
 
 ### Helper Methods

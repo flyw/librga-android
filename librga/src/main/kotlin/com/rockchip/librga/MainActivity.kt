@@ -42,6 +42,9 @@ class MainActivity : AppCompatActivity() {
 
         // Initially show the same image in both views
         ivProcessed.setImageBitmap(originalBitmap)
+
+        // Force RGA3 scheduler (requested by user)
+        Rga.imconfig(Rga.IM_CONFIG_SCHEDULER_CORE, (Rga.IM_SCHEDULER_RGA3_CORE0 or Rga.IM_SCHEDULER_RGA3_CORE1).toLong())
     }
 
     private fun initViews() {

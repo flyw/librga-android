@@ -168,4 +168,9 @@ Java_com_rockchip_librga_Rga_imfill(JNIEnv *env, jobject thiz, jobject dst, jobj
     return imfill(dstBuf, imRect, color);
 }
 
+JNIEXPORT jint JNICALL
+Java_com_rockchip_librga_Rga_imconfig(JNIEnv *env, jobject thiz, jint name, jlong value) {
+    return imconfig((IM_CONFIG_NAME)name, (uint64_t)value);
+}
+
 } // extern "C"

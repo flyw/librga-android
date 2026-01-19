@@ -53,6 +53,13 @@ object Rga {
     const val RK_FORMAT_YCrCb_420_SP = 0xe
     const val RK_FORMAT_YCrCb_420_P  = 0xf
 
+    // Scheduler configuration
+    const val IM_CONFIG_SCHEDULER_CORE = 0
+    const val IM_SCHEDULER_RGA3_CORE0 = 1 shl 0
+    const val IM_SCHEDULER_RGA3_CORE1 = 1 shl 1
+    const val IM_SCHEDULER_RGA2_CORE0 = 1 shl 2
+    const val IM_SCHEDULER_RGA2_CORE1 = 1 shl 3
+
     /**
      * Represents an image buffer for RGA.
      * Use helper methods to construct.
@@ -130,6 +137,13 @@ object Rga {
      * color: 0xAABBGGRR (or depends on format)
      */
     external fun imfill(dst: RgaBuffer, rect: RgaRect, color: Int): Int
+
+    /**
+     * Set configuration for RGA.
+     * name: Configuration item name, e.g., IM_CONFIG_SCHEDULER_CORE
+     * value: Configuration value, e.g., IM_SCHEDULER_RGA3_CORE0 or IM_SCHEDULER_RGA3_CORE1
+     */
+    external fun imconfig(name: Int, value: Long): Int
     
     // Helpers to create RgaBuffer
     private fun createBufferFromFd(fd: Int, width: Int, height: Int, format: Int, wstride: Int = width, hstride: Int = height): RgaBuffer {
