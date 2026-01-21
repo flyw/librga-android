@@ -4,16 +4,16 @@ This project is an **Android build package** and Kotlin wrapper for Rockchip's *
 
 ## ⚠️ Core Requirement: Why RGA3?
 
-**This project defaults to and strongly recommends forcing the use of RGA3 cores for scheduling.**
+**This project forces the use of RGA3 cores for all operations in the JNI layer to ensure reliability on modern Rockchip SoCs.**
 
 ### 1. Breaking the 4GB Memory Limit
 *   **RGA2 Limitation**: The RGA2 hardware is primarily designed for a 32-bit addressing space. On Android devices with more than 4GB of RAM, memory allocated by the application layer (like `Bitmap` or generic physical continuous memory) is likely to reside in **high addresses above 4GB**.
 *   **Failure Symptoms**: When RGA2 attempts to access these high addresses, it causes address overflow, leading to hardware errors, illegal memory access, or kernel crashes (often seen in `dmesg` as `RGA2 invalid address`).
 *   **RGA3 Advantage**: RGA3 cores support 40-bit+ addressing, making them the only reliable choice for hardware acceleration on devices with 8GB, 16GB, or more RAM.
-*   **⚠️ Special Case: Fill Operation**: Even if RGA3 scheduling is forced, the **color fill** operation may still fail if the memory address exceeds 4GB. This is because the hardware `fill` feature is unique to the RGA2 core; the system automatically falls back to RGA2 for this operation, thus re-introducing the 4GB limitation. (Refer to the official Rockchip FAQ).
+*   **Removal of Fill Operation**: The hardware `fill` feature is unique to the RGA2 core. Forcing it to run on RGA3 or using it on high-memory devices would lead to the same 4GB limitation and potential crashes. To ensure system stability, this library has removed the `imfill` method.
 
-### 2. Multi-Core Scheduling
-RGA3 typically includes multiple cores (Core0, Core1). This project uses the `imconfig` interface to explicitly schedule tasks to RGA3 cores, avoiding unpredictable failures caused by the system defaulting to RGA2.
+### 2. Forced RGA3 Scheduling
+Each hardware operation (resize, crop, etc.) is now explicitly scheduled to RGA3 cores (Core0 and Core1) within the native JNI implementation. This eliminates the need for manual configuration and prevents unpredictable failures from system defaults.
 
 ---
 
@@ -61,25 +61,14 @@ By default, the `librga` module is configured as an **Android Application** (`co
 5.  The AAR will be generated at `librga/build/outputs/aar/librga-release.aar`.
 
 ### 1. RGA3 Scheduling (Automatic)
-The library automatically configures the scheduler to use RGA3 cores (Core0 or Core1) upon initialization. This is critical to avoid crashes on large memory Android devices (4GB+) due to RGA2 limitations.
-
-You can manually override this configuration if needed:
-
-```kotlin
-import com.rockchip.librga.Rga
-
-Rga.imconfig(
-    Rga.IM_CONFIG_SCHEDULER_CORE, 
-    (Rga.IM_SCHEDULER_RGA3_CORE0 or Rga.IM_SCHEDULER_RGA3_CORE1).toLong()
-)
-```
+The library automatically configures and forces the use of RGA3 cores (Core0 and Core1) for all operations within the native JNI layer. This ensures compatibility with large-memory Android devices and optimal performance without requiring any manual configuration from the developer.
 
 ### 2. Example: Resize Operation
 ```kotlin
 val srcBuffer = Rga.createRgaBufferFromBitmap(srcBitmap)
 val dstBuffer = Rga.createRgaBufferFromBitmap(dstBitmap)
 
-// Call hardware resize
+// Call hardware resize (automatically uses RGA3)
 val result = Rga.imresize(srcBuffer, dstBuffer)
 
 if (result == Rga.IM_STATUS_SUCCESS) {
@@ -121,7 +110,6 @@ This Android wrapper is built based on the `im2d` API provided by the official r
 - Blend
 - Composite
 - Color Format Conversion
-- Fill
 
 ## API Reference
 
@@ -342,35 +330,6 @@ val dstBuffer = Rga.createRgaBufferFromBitmap(destinationBitmap, Rga.RK_FORMAT_B
 val result = Rga.imcvtcolor(srcBuffer, dstBuffer, Rga.RK_FORMAT_RGBA_8888, Rga.RK_FORMAT_BGRA_8888)
 ```
 
-#### Fill
-Fills destination buffer with a color in a specified rectangle.
-
-```kotlin
-external fun imfill(dst: RgaBuffer, rect: RgaRect, color: Int): Int
-```
-
-**Example:**
-```kotlin
-val fillRect = Rga.RgaRect(50, 50, 100, 100)
-val dstBuffer = Rga.createRgaBufferFromBitmap(destinationBitmap)
-val result = Rga.imfill(dstBuffer, fillRect, Color.RED)
-```
-
-#### Configuration
-Sets RGA configuration, such as scheduler core.
-
-```kotlin
-external fun imconfig(name: Int, value: Long): Int
-```
-
-**Example:**
-```kotlin
-Rga.imconfig(
-    Rga.IM_CONFIG_SCHEDULER_CORE, 
-    (Rga.IM_SCHEDULER_RGA3_CORE0 or Rga.IM_SCHEDULER_RGA3_CORE1).toLong()
-)
-```
-
 ### Helper Methods
 
 #### Creating RGA Buffers from Android Bitmap
@@ -393,6 +352,27 @@ fun copyRgaBufferToBitmap(srcBuffer: RgaBuffer, dstBitmap: android.graphics.Bitm
 **Example:**
 ```kotlin
 Rga.copyRgaBufferToBitmap(buffer, bitmap)
+```
+
+#### Crop Region to Bitmap
+Crops a region from an RGA buffer and returns it as a new Bitmap. Handles hardware cropping and format conversion.
+
+```kotlin
+fun cropToBitmap(srcBuffer: RgaBuffer, rect: android.graphics.Rect): android.graphics.Bitmap
+```
+
+#### YUV/NV21 to RGBA Conversion (Hardware Accelerated)
+Performs hardware-accelerated color space conversion from NV21/YUV to RGBA.
+
+```kotlin
+fun convertNv21ToRgba(srcBuffer: RgaBuffer, dstBuffer: RgaBuffer)
+```
+
+#### Copy RGBA Buffer to Bitmap
+Copies the content of an RGBA RgaBuffer to an Android Bitmap.
+
+```kotlin
+fun copyRgbaToBitmap(rgbaBuffer: RgaBuffer, dstBitmap: android.graphics.Bitmap)
 ```
 
 #### Converting Bitmap to ByteBuffer

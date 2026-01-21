@@ -109,10 +109,10 @@
             android:layout_marginBottom="8dp"/>
 
         <Button
-            android:id="@+id/btnTestFill"
+            android:id="@+id/btnTestYuvToBitmap"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Test Fill"
+            android:text="Test YUV to Bitmap"
             android:layout_marginBottom="8dp"/>
 
     </LinearLayout>

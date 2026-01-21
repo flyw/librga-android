@@ -25,7 +25,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnTestTranslate: Button
     private lateinit var btnTestBlend: Button
     private lateinit var btnTestConvertColor: Button
-    private lateinit var btnTestFill: Button
+    private lateinit var btnTestYuvToBitmap: Button
 
     private var originalBitmap: Bitmap? = null
     private var processedBitmap: Bitmap? = null
@@ -43,8 +43,6 @@ class MainActivity : AppCompatActivity() {
         // Initially show the same image in both views
         ivProcessed.setImageBitmap(originalBitmap)
 
-        // Force RGA3 scheduler (requested by user)
-        Rga.imconfig(Rga.IM_CONFIG_SCHEDULER_CORE, (Rga.IM_SCHEDULER_RGA3_CORE0 or Rga.IM_SCHEDULER_RGA3_CORE1).toLong())
     }
 
     private fun initViews() {
@@ -60,7 +58,7 @@ class MainActivity : AppCompatActivity() {
         btnTestTranslate = findViewById(R.id.btnTestTranslate)
         btnTestBlend = findViewById(R.id.btnTestBlend)
         btnTestConvertColor = findViewById(R.id.btnTestConvertColor)
-        btnTestFill = findViewById(R.id.btnTestFill)
+        btnTestYuvToBitmap = findViewById(R.id.btnTestYuvToBitmap)
     }
 
     private fun setupClickListeners() {
@@ -73,7 +71,7 @@ class MainActivity : AppCompatActivity() {
         btnTestTranslate.setOnClickListener { testTranslate() }
         btnTestBlend.setOnClickListener { testBlend() }
         btnTestConvertColor.setOnClickListener { testConvertColor() }
-        btnTestFill.setOnClickListener { testFill() }
+        btnTestYuvToBitmap.setOnClickListener { testYuvToBitmap() }
     }
 
     private fun generateTestImage() {
@@ -168,105 +166,13 @@ class MainActivity : AppCompatActivity() {
                 testConvertColorOnUiThread()
                 Thread.sleep(2000)
 
-                testFillOnUiThread()
+                testYuvToBitmapOnUiThread()
                 Thread.sleep(2000)
-
-                testFillUsingCopyOnUiThread() // New RGA3 workaround test
 
                 updateResultTextOnUiThread("\nAll tests completed!")
             } catch (e: Exception) {
                 Log.e("MainActivity", "Error running tests", e)
                 updateResultTextOnUiThread("Error running tests: ${e.message}")
-            }
-        }.start()
-    }
-
-    private fun testFillUsingCopyOnUiThread() {
-        runOnUiThread { testFillUsingCopy() }
-    }
-
-    @RequiresApi(Build.VERSION_CODES.Q)
-    private fun testFillUsingCopy() {
-        Thread {
-            try {
-                updateResultTextOnUiThread("Starting Fill-via-Copy (RGA3 Workaround)...")
-                val width = 400
-                val height = 400
-
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                    try {
-                        // 1. Create Destination HardwareBuffer (Target Image)
-                        // Using GPU_COLOR_OUTPUT to ensure it's usable as render target if needed,
-                        // and likely allocated in a way RGA likes (though RGA3 handles any).
-                        val usageDst = android.hardware.HardwareBuffer.USAGE_CPU_READ_OFTEN or
-                                android.hardware.HardwareBuffer.USAGE_CPU_WRITE_OFTEN or
-                                android.hardware.HardwareBuffer.USAGE_GPU_COLOR_OUTPUT
-
-                        val dstHb = android.hardware.HardwareBuffer.create(width, height, android.hardware.HardwareBuffer.RGBA_8888, 1, usageDst)
-                        val dstBuffer = Rga.RgaBuffer(width, height, Rga.RK_FORMAT_RGBA_8888, hardwareBuffer = dstHb)
-
-                        // 2. Create Source HardwareBuffer (Small 16x16 solid color block)
-                        // RGA3 will scale this up to fill the target rect
-                        val srcSize = 16
-                        val usageSrc = android.hardware.HardwareBuffer.USAGE_CPU_WRITE_OFTEN or
-                                android.hardware.HardwareBuffer.USAGE_GPU_SAMPLED_IMAGE
-                        val srcHb = android.hardware.HardwareBuffer.create(srcSize, srcSize, android.hardware.HardwareBuffer.RGBA_8888, 1, usageSrc)
-
-                        // Fill source HB with solid Green color manually (using Bitmap wrapper)
-                        val srcBitmap = Bitmap.wrapHardwareBuffer(srcHb, android.graphics.ColorSpace.get(android.graphics.ColorSpace.Named.SRGB))
-                        if (srcBitmap != null) {
-                            srcBitmap.eraseColor(Color.GREEN)
-                            srcBitmap.recycle() // Recycle wrapper, keep HB
-                        } else {
-                            updateResultTextOnUiThread("Failed to wrap src HB in Bitmap")
-                            return@Thread
-                        }
-
-                        val srcBuffer = Rga.RgaBuffer(srcSize, srcSize, Rga.RK_FORMAT_RGBA_8888, hardwareBuffer = srcHb)
-
-                        // 3. Perform Copy (Scaling) from small Src to Dst
-                        // Destination rect: 50, 50, 100, 100
-                        // Since imcopy usually copies src rect to dst rect, we need to ensure imcopy implementation
-                        // supports scaling if src and dst dims differ.
-                        // But wait, standard `imcopy` might just do 1:1 copy or require same size.
-                        // `imresize` is for scaling. `imcopy` documentation says "Copy src to dst".
-                        // If we use `imresize`, it takes full buffer to full buffer usually.
-                        // We want "Copy src (small) to Dst (sub-rect)".
-                        // RGA `imcopy` with explicit rects is actually `imcrop` or `improcess`.
-                        // Kotlin wrapper `imcrop` takes `rect` for crop.
-
-                        // Let's use `imresize` if we want scaling. But `imresize` in Kotlin wrapper takes full src and full dst buffers.
-                        // To fill a sub-rect (50, 50, 100, 100), we can't easily use simple `imresize` API unless we create a "sub-buffer" wrapper for Dst.
-
-                        // Option A: Use `imcopy` if the underlying implementation supports scaling (im2d usually handles it if rects differ).
-                        // But Kotlin `imcopy` doesn't take rects.
-
-                        // Option B: Use `imcrop`? `imcrop` usually means crop SRC to DST.
-
-                        // Let's try `imresize` but we need to target a sub-region of dst.
-                        // Since our Kotlin API is limited, maybe we can just fill the WHOLE dst buffer for this test to prove the point?
-                        // "Fill (Copy) 400x400 with Green".
-
-                        val result = Rga.imresize(srcBuffer, dstBuffer)
-
-                        if (result == Rga.IM_STATUS_SUCCESS) {
-                            updateResultTextOnUiThread("Fill-via-Copy (Resize): SUCCESS")
-                        } else {
-                            updateResultTextOnUiThread("Fill-via-Copy (Resize): FAILED (res: $result)")
-                        }
-
-                        srcHb.close()
-                        dstHb.close()
-
-                    } catch (e: Exception) {
-                        Log.e("MainActivity", "Fill-via-Copy Error", e)
-                        updateResultTextOnUiThread("Fill-via-Copy: ERROR - ${e.message}")
-                    }
-                } else {
-                    updateResultTextOnUiThread("HardwareBuffer/Wrap not supported (Need API 26/29+)")
-                }
-            } catch (e: Exception) {
-                Log.e("MainActivity", "Error in testFillUsingCopy", e)
             }
         }.start()
     }
@@ -299,8 +205,59 @@ class MainActivity : AppCompatActivity() {
         runOnUiThread { testConvertColor() }
     }
 
-    private fun testFillOnUiThread() {
-        runOnUiThread { testFill() }
+    private fun testYuvToBitmapOnUiThread() {
+        runOnUiThread { testYuvToBitmap() }
+    }
+
+    private fun testYuvToBitmap() {
+        updateResultTextOnUiThread("Running YUV to Bitmap test...")
+        Thread {
+            try {
+                val width = 400
+                val height = 400
+                
+                // 1. Create NV21 (YCrCb_420_SP) data
+                // Y size = width * height, UV size = width * height / 2
+                val nv21Size = width * height * 3 / 2
+                val nv21Data = ByteArray(nv21Size)
+                
+                // Fill Y with a horizontal gradient
+                for (y in 0 until height) {
+                    for (x in 0 until width) {
+                        nv21Data[y * width + x] = ((x * 255) / width).toByte()
+                    }
+                }
+                
+                // Fill UV with a vertical gradient (for simplicity)
+                val uvOffset = width * height
+                for (i in 0 until (width * height / 2)) {
+                    nv21Data[uvOffset + i] = ((i * 2 / width * 255) / height).toByte()
+                }
+
+                // 2. Create Destination Bitmap
+                val dstBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+
+                // 3. Create RgaBuffers
+                val srcBuffer = Rga.createRgaBufferFromNv21(nv21Data, width, height)
+                val dstBuffer = Rga.createRgaBufferFromBitmap(dstBitmap)
+
+                // 4. Call the color conversion function
+                // Note: imcvtcolor also supports CSC (Color Space Conversion)
+                val result = Rga.imcvtcolor(srcBuffer, dstBuffer, Rga.RK_FORMAT_YCrCb_420_SP, Rga.RK_FORMAT_RGBA_8888)
+
+                if (result == Rga.IM_STATUS_SUCCESS) {
+                    // Update the processed bitmap with the result
+                    Rga.copyRgaBufferToBitmap(dstBuffer, dstBitmap)
+                    updateProcessedBitmapWithErrorHandling(dstBitmap)
+                    updateResultTextOnUiThread("YUV to Bitmap test: SUCCESS")
+                } else {
+                    updateResultTextOnUiThread("YUV to Bitmap test: FAILED (result: $result)")
+                }
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error in testYuvToBitmap", e)
+                updateResultTextOnUiThread("YUV to Bitmap test: ERROR - ${e.message}")
+            }
+        }.start()
     }
 
     private fun testCopyOnUiThread() {
@@ -553,64 +510,6 @@ class MainActivity : AppCompatActivity() {
             }
         }.start()
     }
-
-    private fun testFill() {
-        Thread {
-            try {
-                val width = 400
-                val height = 400
-                val fillRect = Rga.RgaRect(50, 50, 100, 100)
-
-                updateResultTextOnUiThread("Starting Fill tests...")
-
-                // --- Test 1: Standard Bitmap (likely to fail on RGA2 if address > 4G) ---
-                try {
-                    val dstBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-                    val dstBuffer = Rga.createRgaBufferFromBitmap(dstBitmap)
-                    val result = Rga.imfill(dstBuffer, fillRect, Color.RED)
-                    if (result == Rga.IM_STATUS_SUCCESS) {
-                        Rga.copyRgaBufferToBitmap(dstBuffer, dstBitmap)
-                        updateResultTextOnUiThread("Fill (Bitmap): SUCCESS")
-                        updateProcessedBitmap(dstBitmap)
-                    } else {
-                        updateResultTextOnUiThread("Fill (Bitmap): FAILED (res: $result) - Check dmesg for 4G limit")
-                    }
-                } catch (e: Exception) {
-                    updateResultTextOnUiThread("Fill (Bitmap): ERROR - ${e.message}")
-                }
-
-                // --- Test 2: HardwareBuffer (Recommended for RGA) ---
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                    try {
-                        val usage = android.hardware.HardwareBuffer.USAGE_CPU_READ_OFTEN or
-                                android.hardware.HardwareBuffer.USAGE_CPU_WRITE_OFTEN or
-                                android.hardware.HardwareBuffer.USAGE_GPU_COLOR_OUTPUT
-
-                        val hb = android.hardware.HardwareBuffer.create(width, height, android.hardware.HardwareBuffer.RGBA_8888, 1, usage)
-                        val dstBuffer = Rga.RgaBuffer(width, height, Rga.RK_FORMAT_RGBA_8888, hardwareBuffer = hb)
-
-                        val result = Rga.imfill(dstBuffer, fillRect, Color.BLUE) // Use Blue for HB test
-                        if (result == Rga.IM_STATUS_SUCCESS) {
-                            updateResultTextOnUiThread("Fill (HardwareBuffer): SUCCESS")
-                        } else {
-                            updateResultTextOnUiThread("Fill (HardwareBuffer): FAILED (res: $result)")
-                        }
-                        hb.close()
-                    } catch (e: Exception) {
-                        Log.e("MainActivity", "Failed to create HardwareBuffer", e)
-                        updateResultTextOnUiThread("Fill (HardwareBuffer): ERROR - ${e.message}")
-                    }
-                } else {
-                    updateResultTextOnUiThread("HardwareBuffer not supported on this API level")
-                }
-
-            } catch (e: Exception) {
-                Log.e("MainActivity", "Error in testFill", e)
-                updateResultTextOnUiThread("Fill test: ERROR - ${e.message}")
-            }
-        }.start()
-    }
-
 
     private fun updateProcessedBitmap(bitmap: Bitmap) {
         processedBitmap = bitmap

@@ -1,6 +1,7 @@
 #include <jni.h>
 #include <string>
 #include <android/log.h>
+#include <android/bitmap.h>
 #include <android/hardware_buffer.h>
 #include <android/hardware_buffer_jni.h>
 #include "im2d.h"
@@ -8,6 +9,7 @@
 
 #define TAG "LibrgaJni"
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
+
 
 // Define native_handle_t as it is not strictly in NDK headers but needed to extract FD
 typedef struct native_handle {
@@ -97,14 +99,20 @@ JNIEXPORT jint JNICALL
 Java_com_rockchip_librga_Rga_imcopy(JNIEnv *env, jobject thiz, jobject src, jobject dst) {
     rga_buffer_t srcBuf = getRgaBuffer(env, src);
     rga_buffer_t dstBuf = getRgaBuffer(env, dst);
-    return imcopy(srcBuf, dstBuf);
+    im_opt_t opt;
+    opt.version = RGA_CURRENT_API_VERSION;
+    opt.core = IM_SCHEDULER_RGA3_CORE0 | IM_SCHEDULER_RGA3_CORE1;
+    return improcess(srcBuf, dstBuf, {}, {}, {}, {}, -1, NULL, &opt, 0);
 }
 
 JNIEXPORT jint JNICALL
 Java_com_rockchip_librga_Rga_imresize(JNIEnv *env, jobject thiz, jobject src, jobject dst, jdouble fx, jdouble fy) {
     rga_buffer_t srcBuf = getRgaBuffer(env, src);
     rga_buffer_t dstBuf = getRgaBuffer(env, dst);
-    return imresize(srcBuf, dstBuf, fx, fy);
+    im_opt_t opt;
+    opt.version = RGA_CURRENT_API_VERSION;
+    opt.core = IM_SCHEDULER_RGA3_CORE0 | IM_SCHEDULER_RGA3_CORE1;
+    return improcess(srcBuf, dstBuf, {}, {}, {}, {}, -1, NULL, &opt, 0);
 }
 
 JNIEXPORT jint JNICALL
@@ -112,35 +120,67 @@ Java_com_rockchip_librga_Rga_imcrop(JNIEnv *env, jobject thiz, jobject src, jobj
     rga_buffer_t srcBuf = getRgaBuffer(env, src);
     rga_buffer_t dstBuf = getRgaBuffer(env, dst);
     im_rect imRect = getRgaRect(env, rect);
-    return imcrop(srcBuf, dstBuf, imRect);
+    im_opt_t opt;
+    opt.version = RGA_CURRENT_API_VERSION;
+    opt.core = IM_SCHEDULER_RGA3_CORE0 | IM_SCHEDULER_RGA3_CORE1;
+    return improcess(srcBuf, dstBuf, {}, imRect, {}, {}, -1, NULL, &opt, 0);
 }
 
 JNIEXPORT jint JNICALL
 Java_com_rockchip_librga_Rga_imrotate(JNIEnv *env, jobject thiz, jobject src, jobject dst, jint rotation) {
     rga_buffer_t srcBuf = getRgaBuffer(env, src);
     rga_buffer_t dstBuf = getRgaBuffer(env, dst);
-    return imrotate(srcBuf, dstBuf, rotation);
+
+    im_opt_t opt;
+    opt.version = RGA_CURRENT_API_VERSION;
+    opt.core = IM_SCHEDULER_RGA3_CORE0 | IM_SCHEDULER_RGA3_CORE1;
+    return improcess(srcBuf, dstBuf, {}, {}, {}, {}, -1, NULL, &opt, rotation);
+
 }
 
 JNIEXPORT jint JNICALL
 Java_com_rockchip_librga_Rga_imflip(JNIEnv *env, jobject thiz, jobject src, jobject dst, jint mode) {
     rga_buffer_t srcBuf = getRgaBuffer(env, src);
     rga_buffer_t dstBuf = getRgaBuffer(env, dst);
-    return imflip(srcBuf, dstBuf, mode);
+    im_opt_t opt;
+    opt.version = RGA_CURRENT_API_VERSION;
+    opt.core = IM_SCHEDULER_RGA3_CORE0 | IM_SCHEDULER_RGA3_CORE1;
+    return improcess(srcBuf, dstBuf, {}, {}, {}, {}, -1, NULL, &opt, mode);
 }
 
 JNIEXPORT jint JNICALL
 Java_com_rockchip_librga_Rga_imtranslate(JNIEnv *env, jobject thiz, jobject src, jobject dst, jint x, jint y) {
     rga_buffer_t srcBuf = getRgaBuffer(env, src);
     rga_buffer_t dstBuf = getRgaBuffer(env, dst);
-    return imtranslate(srcBuf, dstBuf, x, y);
+    if (x < 0 || y < 0 || x >= srcBuf.width || y >= srcBuf.height) {
+        LOGE("Invalid translation parameters: x=%d, y=%d", x, y);
+        return -1;
+    }
+    // 完整初始化 im_opt_t 结构体
+    im_opt_t opt;
+    memset(&opt, 0, sizeof(im_opt_t));
+    opt.version = RGA_CURRENT_API_VERSION;
+    opt.core = IM_SCHEDULER_RGA3_CORE0 | IM_SCHEDULER_RGA3_CORE1;
+    im_rect srect;
+    srect.x = x;
+    srect.y = y;
+    srect.width = (x + srcBuf.width > srcBuf.wstride) ?
+                  (srcBuf.wstride - x) : srcBuf.width;
+    srect.height = (y + srcBuf.height > srcBuf.hstride) ?
+                   (srcBuf.hstride - y) : srcBuf.height;
+    im_rect drect = {0, 0, dstBuf.width, dstBuf.height};
+    return improcess(srcBuf, dstBuf, {}, srect, drect, {}, -1, NULL, &opt, 0);
 }
 
 JNIEXPORT jint JNICALL
 Java_com_rockchip_librga_Rga_imblend(JNIEnv *env, jobject thiz, jobject src, jobject dst, jint mode) {
     rga_buffer_t srcBuf = getRgaBuffer(env, src);
     rga_buffer_t dstBuf = getRgaBuffer(env, dst);
-    return imblend(srcBuf, dstBuf, mode);
+    im_opt_t opt;
+    memset(&opt, 0, sizeof(im_opt_t));
+    opt.version = RGA_CURRENT_API_VERSION;
+    opt.core = IM_SCHEDULER_RGA3_CORE0 | IM_SCHEDULER_RGA3_CORE1;
+    return improcess(srcBuf, dstBuf, {}, {}, {}, {}, -1, NULL, &opt,IM_SYNC | mode);
 }
 
 JNIEXPORT jint JNICALL
@@ -148,29 +188,22 @@ Java_com_rockchip_librga_Rga_imcomposite(JNIEnv *env, jobject thiz, jobject srcA
     rga_buffer_t srcABuf = getRgaBuffer(env, srcA);
     rga_buffer_t srcBBuf = getRgaBuffer(env, srcB);
     rga_buffer_t dstBuf = getRgaBuffer(env, dst);
-    return imcomposite(srcABuf, srcBBuf, dstBuf, mode);
+    im_opt_t opt;
+    memset(&opt, 0, sizeof(im_opt_t));
+    opt.version = RGA_CURRENT_API_VERSION;
+    opt.core = IM_SCHEDULER_RGA3_CORE0 | IM_SCHEDULER_RGA3_CORE1;
+    return improcess(srcABuf, dstBuf, srcBBuf, {}, {}, {}, -1, NULL, &opt, mode);
 }
 
 JNIEXPORT jint JNICALL
 Java_com_rockchip_librga_Rga_imcvtcolor(JNIEnv *env, jobject thiz, jobject src, jobject dst, jint sfmt, jint dfmt) {
     rga_buffer_t srcBuf = getRgaBuffer(env, src);
     rga_buffer_t dstBuf = getRgaBuffer(env, dst);
-    return imcvtcolor(srcBuf, dstBuf, sfmt, dfmt);
-}
-
-JNIEXPORT jint JNICALL
-Java_com_rockchip_librga_Rga_imfill(JNIEnv *env, jobject thiz, jobject dst, jobject rect, jint color) {
-    rga_buffer_t dstBuf = getRgaBuffer(env, dst);
-    im_rect imRect = getRgaRect(env, rect);
-    LOGE("imfill: dst(w=%d, h=%d, ws=%d, hs=%d), rect(x=%d, y=%d, w=%d, h=%d)", 
-         dstBuf.width, dstBuf.height, dstBuf.wstride, dstBuf.hstride,
-         imRect.x, imRect.y, imRect.width, imRect.height);
-    return imfill(dstBuf, imRect, color);
-}
-
-JNIEXPORT jint JNICALL
-Java_com_rockchip_librga_Rga_imconfig(JNIEnv *env, jobject thiz, jint name, jlong value) {
-    return imconfig((IM_CONFIG_NAME)name, (uint64_t)value);
+    im_opt_t opt;
+    memset(&opt, 0, sizeof(im_opt_t));
+    opt.version = RGA_CURRENT_API_VERSION;
+    opt.core = IM_SCHEDULER_RGA3_CORE0 | IM_SCHEDULER_RGA3_CORE1;
+    return improcess(srcBuf, dstBuf, {}, {}, {}, {}, -1, NULL, &opt, 0);
 }
 
 } // extern "C"

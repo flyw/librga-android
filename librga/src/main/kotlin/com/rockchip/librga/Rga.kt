@@ -1,5 +1,7 @@
 package com.rockchip.librga
 
+import android.util.Log
+import androidx.core.graphics.createBitmap
 import java.nio.ByteBuffer
 
 /**
@@ -8,10 +10,6 @@ import java.nio.ByteBuffer
 object Rga {
     init {
         System.loadLibrary("rga_jni")
-        imconfig(
-            IM_CONFIG_SCHEDULER_CORE,
-            (IM_SCHEDULER_RGA3_CORE0 or IM_SCHEDULER_RGA3_CORE1).toLong()
-        )
     }
 
     // Constants from RgaUtils.h / im2d_type.h (Simplified for common usage)
@@ -136,19 +134,6 @@ object Rga {
      */
     external fun imcvtcolor(src: RgaBuffer, dst: RgaBuffer, sfmt: Int, dfmt: Int): Int
 
-    /**
-     * Fill dst with color.
-     * color: 0xAABBGGRR (or depends on format)
-     */
-    external fun imfill(dst: RgaBuffer, rect: RgaRect, color: Int): Int
-
-    /**
-     * Set configuration for RGA.
-     * name: Configuration item name, e.g., IM_CONFIG_SCHEDULER_CORE
-     * value: Configuration value, e.g., IM_SCHEDULER_RGA3_CORE0 or IM_SCHEDULER_RGA3_CORE1
-     */
-    external fun imconfig(name: Int, value: Long): Int
-
     // Helpers to create RgaBuffer
     fun createBufferFromFd(fd: Int, width: Int, height: Int, format: Int, wstride: Int = width, hstride: Int = height): RgaBuffer {
         return RgaBuffer(width, height, format, wstride, hstride, fd = fd)
@@ -196,6 +181,61 @@ object Rga {
         buffer.put(nv21Data)
         buffer.rewind()
         return createBufferFromByteBuffer(buffer, width, height, format)
+    }
+
+    /**
+     * Crop a region from srcBuffer and return as a Bitmap.
+     * This handles both the hardware cropping and the format conversion to RGBA.
+     */
+    fun cropToBitmap(srcBuffer: RgaBuffer, rect: android.graphics.Rect): android.graphics.Bitmap {
+        Log.v("Rga", "cropToBitmap")
+        val cropWidth = rect.width()
+        val cropHeight = rect.height()
+
+        // 1. Create target bitmap (Ensure even dimensions if required by hardware, though RGA handles most)
+        val bitmap = createBitmap(cropWidth, cropHeight, android.graphics.Bitmap.Config.ARGB_8888)
+
+        // 2. Prepare destination RGA buffer using a direct ByteBuffer
+        val byteCount = cropWidth * cropHeight * 4 // RGBA_8888 is 4 bytes per pixel
+        val dstByteBuffer = java.nio.ByteBuffer.allocateDirect(byteCount)
+        val dstBuffer = createBufferFromByteBuffer(dstByteBuffer, cropWidth, cropHeight, RK_FORMAT_RGBA_8888)
+
+        // 3. Execute crop (RGA imcrop will crop the 'rect' from 'srcBuffer' and scale/copy to 'dstBuffer')
+        val rgaRect = RgaRect(rect.left, rect.top, cropWidth, cropHeight)
+        imcrop(srcBuffer, dstBuffer, rgaRect)
+
+        // 4. Copy results from the hardware-filled buffer back to the bitmap
+        dstByteBuffer.rewind()
+        bitmap.copyPixelsFromBuffer(dstByteBuffer)
+
+        return bitmap
+    }
+
+    /**
+     * Step 1: Convert an NV21/YUV RgaBuffer to an RGBA RgaBuffer using RGA hardware.
+     * Use this to perform the hardware acceleration part separately.
+     */
+    fun convertNv21ToRgba(srcBuffer: RgaBuffer, dstBuffer: RgaBuffer) {
+        if (dstBuffer.format != RK_FORMAT_RGBA_8888) {
+            throw IllegalArgumentException("Destination buffer must be in RK_FORMAT_RGBA_8888 format")
+        }
+        imcvtcolor(srcBuffer, dstBuffer, srcBuffer.format, RK_FORMAT_RGBA_8888)
+    }
+
+    /**
+     * Step 2: Copy the content of an RGBA RgaBuffer to a Bitmap.
+     * This should be called after the buffer has been filled (e.g., by convertNv21ToRgba).
+     */
+    fun copyRgbaToBitmap(rgbaBuffer: RgaBuffer, dstBitmap: android.graphics.Bitmap) {
+        if (rgbaBuffer.ptr == null) {
+            throw IllegalArgumentException("RgaBuffer must have a valid direct ByteBuffer (ptr)")
+        }
+        if (rgbaBuffer.format != RK_FORMAT_RGBA_8888) {
+            // In some cases, other formats might work, but RGBA_8888 is standard for Bitmap.copyPixelsFromBuffer
+            Log.w("Rga", "Format is not RGBA_8888, copy might fail or show wrong colors")
+        }
+        rgbaBuffer.ptr.rewind()
+        dstBitmap.copyPixelsFromBuffer(rgbaBuffer.ptr)
     }
 
     fun copyRgaBufferToBitmap(srcBuffer: RgaBuffer, dstBitmap: android.graphics.Bitmap) {
