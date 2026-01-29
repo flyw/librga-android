@@ -110,9 +110,25 @@ Java_com_rockchip_librga_Rga_imresize(JNIEnv *env, jobject thiz, jobject src, jo
     rga_buffer_t srcBuf = getRgaBuffer(env, src);
     rga_buffer_t dstBuf = getRgaBuffer(env, dst);
     im_opt_t opt;
+    memset(&opt, 0, sizeof(im_opt_t));
     opt.version = RGA_CURRENT_API_VERSION;
     opt.core = IM_SCHEDULER_RGA3_CORE0 | IM_SCHEDULER_RGA3_CORE1;
     return improcess(srcBuf, dstBuf, {}, {}, {}, {}, -1, NULL, &opt, 0);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_rockchip_librga_Rga_imrescale(JNIEnv *env, jobject thiz, jobject src, jobject dst, jdouble fx, jdouble fy) {
+    rga_buffer_t srcBuf = getRgaBuffer(env, src);
+    rga_buffer_t dstBuf = getRgaBuffer(env, dst);
+    im_opt_t opt;
+    memset(&opt, 0, sizeof(im_opt_t));
+    opt.version = RGA_CURRENT_API_VERSION;
+    opt.core = IM_SCHEDULER_RGA3_CORE0 | IM_SCHEDULER_RGA3_CORE1;
+
+    im_rect srect = {0, 0, srcBuf.width, srcBuf.height};
+    im_rect drect = {0, 0, (int)(srcBuf.width * fx), (int)(srcBuf.height * fy)};
+
+    return improcess(srcBuf, dstBuf, {}, srect, drect, {}, -1, NULL, &opt, 0);
 }
 
 JNIEXPORT jint JNICALL

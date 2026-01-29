@@ -19,6 +19,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnRunAllTests: Button
     private lateinit var btnTestCopy: Button
     private lateinit var btnTestResize: Button
+    private lateinit var btnTestRescale: Button
     private lateinit var btnTestCrop: Button
     private lateinit var btnTestRotate: Button
     private lateinit var btnTestFlip: Button
@@ -52,6 +53,7 @@ class MainActivity : AppCompatActivity() {
         btnRunAllTests = findViewById(R.id.btnRunAllTests)
         btnTestCopy = findViewById(R.id.btnTestCopy)
         btnTestResize = findViewById(R.id.btnTestResize)
+        btnTestRescale = findViewById(R.id.btnTestRescale)
         btnTestCrop = findViewById(R.id.btnTestCrop)
         btnTestRotate = findViewById(R.id.btnTestRotate)
         btnTestFlip = findViewById(R.id.btnTestFlip)
@@ -65,6 +67,7 @@ class MainActivity : AppCompatActivity() {
         btnRunAllTests.setOnClickListener { runAllTests() }
         btnTestCopy.setOnClickListener { testCopy() }
         btnTestResize.setOnClickListener { testResize() }
+        btnTestRescale.setOnClickListener { testRescale() }
         btnTestCrop.setOnClickListener { testCrop() }
         btnTestRotate.setOnClickListener { testRotate() }
         btnTestFlip.setOnClickListener { testFlip() }
@@ -148,6 +151,9 @@ class MainActivity : AppCompatActivity() {
                 testResizeOnUiThread()
                 Thread.sleep(2000)
 
+                testRescaleOnUiThread()
+                Thread.sleep(2000)
+
                 testCropOnUiThread()
                 Thread.sleep(2000)
 
@@ -179,6 +185,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun testResizeOnUiThread() {
         runOnUiThread { testResize() }
+    }
+
+    private fun testRescaleOnUiThread() {
+        runOnUiThread { testRescale() }
     }
 
     private fun testCropOnUiThread() {
@@ -325,6 +335,41 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Log.e("MainActivity", "Error in testResize", e)
                 updateResultTextOnUiThread("Resize test: ERROR - ${e.message}")
+            }
+        }.start()
+    }
+
+    private fun testRescale() {
+        updateResultTextOnUiThread("Running Rescale test...")
+        Thread {
+            try {
+                val srcBitmap = originalBitmap ?: return@Thread
+                val fx = 0.5
+                val fy = 0.5
+                val newWidth = (srcBitmap.width * fx).toInt()
+                val newHeight = (srcBitmap.height * fy).toInt()
+                val dstBitmap = Bitmap.createBitmap(newWidth, newHeight, Bitmap.Config.ARGB_8888)
+
+                // Create RgaBuffers
+                val srcBuffer = Rga.createRgaBufferFromBitmap(srcBitmap)
+                val dstBuffer = Rga.createRgaBufferFromBitmap(dstBitmap)
+
+                // Call the rescale function
+                val result = Rga.imrescale(srcBuffer, dstBuffer, fx, fy)
+
+                if (result == Rga.IM_STATUS_SUCCESS) {
+                    // Copy data from buffer back to bitmap
+                    Rga.copyRgaBufferToBitmap(dstBuffer, dstBitmap)
+
+                    // Update the processed bitmap with the result
+                    updateProcessedBitmapWithErrorHandling(dstBitmap)
+                    updateResultTextOnUiThread("Rescale test: SUCCESS (${srcBitmap.width}x${srcBitmap.height} -> ${newWidth}x${newHeight})")
+                } else {
+                    updateResultTextOnUiThread("Rescale test: FAILED (result: $result)")
+                }
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error in testRescale", e)
+                updateResultTextOnUiThread("Rescale test: ERROR - ${e.message}")
             }
         }.start()
     }

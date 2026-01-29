@@ -98,6 +98,11 @@ object Rga {
     external fun imresize(src: RgaBuffer, dst: RgaBuffer, fx: Double = 0.0, fy: Double = 0.0): Int
 
     /**
+     * Rescale src to dst by factors fx, fy.
+     */
+    external fun imrescale(src: RgaBuffer, dst: RgaBuffer, fx: Double, fy: Double): Int
+
+    /**
      * Crop src to dst using rect.
      */
     external fun imcrop(src: RgaBuffer, dst: RgaBuffer, rect: RgaRect): Int

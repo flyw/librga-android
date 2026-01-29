@@ -103,6 +103,7 @@ This Android wrapper is built based on the `im2d` API provided by the official r
 
 - Copy
 - Resize
+- Rescale
 - Crop
 - Rotate
 - Flip
@@ -228,6 +229,20 @@ external fun imresize(src: RgaBuffer, dst: RgaBuffer, fx: Double = 0.0, fy: Doub
 val srcBuffer = Rga.createRgaBufferFromBitmap(sourceBitmap)
 val dstBuffer = Rga.createRgaBufferFromBitmap(destinationBitmap)
 val result = Rga.imresize(srcBuffer, dstBuffer, 0.5, 0.5) // Scale to 50%
+```
+
+#### Rescale
+Rescales source image to destination dimensions using specific scale factors.
+
+```kotlin
+external fun imrescale(src: RgaBuffer, dst: RgaBuffer, fx: Double, fy: Double): Int
+```
+
+**Example:**
+```kotlin
+val srcBuffer = Rga.createRgaBufferFromBitmap(sourceBitmap)
+val dstBuffer = Rga.createRgaBufferFromBitmap(destinationBitmap)
+val result = Rga.imrescale(srcBuffer, dstBuffer, 0.5, 0.5) // Scale to 50%
 ```
 
 #### Crop
