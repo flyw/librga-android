@@ -55,6 +55,10 @@ object Rga {
     const val RK_FORMAT_YCrCb_420_SP = 0xe
     const val RK_FORMAT_YCrCb_420_P  = 0xf
 
+    // Sync modes
+    const val IM_SYNC = 1 shl 19
+    const val IM_ASYNC = 1 shl 26
+
     // Scheduler configuration
     const val IM_CONFIG_SCHEDULER_CORE = 0
     const val IM_SCHEDULER_RGA3_CORE0 = 1 shl 0
@@ -88,9 +92,29 @@ object Rga {
     // --- Native Methods ---
 
     /**
+     * Create an RGA image processing job.
+     */
+    external fun imbeginJob(flags: Long = 0): Long
+
+    /**
+     * Submit and execute RGA image processing job.
+     */
+    external fun imendJob(jobHandle: Long, syncMode: Int = IM_SYNC): Int
+
+    /**
+     * Cancel and delete the RGA image processing job.
+     */
+    external fun imcancelJob(jobHandle: Long): Int
+
+    /**
      * Copy src to dst.
      */
     external fun imcopy(src: RgaBuffer, dst: RgaBuffer): Int
+
+    /**
+     * Add an image copy operation to the specified job.
+     */
+    external fun imcopyTask(jobHandle: Long, src: RgaBuffer, dst: RgaBuffer): Int
 
     /**
      * Resize src to dst.
@@ -98,14 +122,29 @@ object Rga {
     external fun imresize(src: RgaBuffer, dst: RgaBuffer, fx: Double = 0.0, fy: Double = 0.0): Int
 
     /**
+     * Add an image resize operation to the specified job.
+     */
+    external fun imresizeTask(jobHandle: Long, src: RgaBuffer, dst: RgaBuffer, fx: Double = 0.0, fy: Double = 0.0): Int
+
+    /**
      * Rescale src to dst by factors fx, fy.
      */
     external fun imrescale(src: RgaBuffer, dst: RgaBuffer, fx: Double, fy: Double): Int
 
     /**
+     * Add an image rescale operation to the specified job.
+     */
+    external fun imrescaleTask(jobHandle: Long, src: RgaBuffer, dst: RgaBuffer, fx: Double, fy: Double): Int
+
+    /**
      * Crop src to dst using rect.
      */
     external fun imcrop(src: RgaBuffer, dst: RgaBuffer, rect: RgaRect): Int
+
+    /**
+     * Add an image crop operation to the specified job.
+     */
+    external fun imcropTask(jobHandle: Long, src: RgaBuffer, dst: RgaBuffer, rect: RgaRect): Int
 
     /**
      * Rotate src to dst.
@@ -114,10 +153,20 @@ object Rga {
     external fun imrotate(src: RgaBuffer, dst: RgaBuffer, rotation: Int): Int
 
     /**
+     * Add an image rotation operation to the specified job.
+     */
+    external fun imrotateTask(jobHandle: Long, src: RgaBuffer, dst: RgaBuffer, rotation: Int): Int
+
+    /**
      * Flip src to dst.
      * mode: One of IM_HAL_TRANSFORM_FLIP_*
      */
     external fun imflip(src: RgaBuffer, dst: RgaBuffer, mode: Int): Int
+
+    /**
+     * Add an image flip operation to the specified job.
+     */
+    external fun imflipTask(jobHandle: Long, src: RgaBuffer, dst: RgaBuffer, mode: Int): Int
 
     /**
      * Translate src to dst.
@@ -125,9 +174,19 @@ object Rga {
     external fun imtranslate(src: RgaBuffer, dst: RgaBuffer, x: Int, y: Int): Int
 
     /**
+     * Add an image translation operation to the specified job.
+     */
+    external fun imtranslateTask(jobHandle: Long, src: RgaBuffer, dst: RgaBuffer, x: Int, y: Int): Int
+
+    /**
      * Blend src (foreground) and dst (background) -> dst.
      */
     external fun imblend(src: RgaBuffer, dst: RgaBuffer, mode: Int = IM_ALPHA_BLEND_SRC_OVER): Int
+
+    /**
+     * Add an image blend operation to the specified job.
+     */
+    external fun imblendTask(jobHandle: Long, src: RgaBuffer, dst: RgaBuffer, mode: Int = IM_ALPHA_BLEND_SRC_OVER): Int
 
     /**
      * Composite srcA (foreground) and srcB (background) -> dst.
@@ -135,9 +194,19 @@ object Rga {
     external fun imcomposite(srcA: RgaBuffer, srcB: RgaBuffer, dst: RgaBuffer, mode: Int = IM_ALPHA_BLEND_SRC_OVER): Int
 
     /**
+     * Add an image composite operation to the specified job.
+     */
+    external fun imcompositeTask(jobHandle: Long, srcA: RgaBuffer, srcB: RgaBuffer, dst: RgaBuffer, mode: Int = IM_ALPHA_BLEND_SRC_OVER): Int
+
+    /**
      * Convert color format.
      */
     external fun imcvtcolor(src: RgaBuffer, dst: RgaBuffer, sfmt: Int, dfmt: Int): Int
+
+    /**
+     * Add an image format conversion operation to the specified job.
+     */
+    external fun imcvtcolorTask(jobHandle: Long, src: RgaBuffer, dst: RgaBuffer, sfmt: Int, dfmt: Int): Int
 
     // Helpers to create RgaBuffer
     fun createBufferFromFd(fd: Int, width: Int, height: Int, format: Int, wstride: Int = width, hstride: Int = height): RgaBuffer {

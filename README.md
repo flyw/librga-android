@@ -76,6 +76,30 @@ if (result == Rga.IM_STATUS_SUCCESS) {
 }
 ```
 
+### 3. Job/Task System (Batch Processing)
+For complex pipelines, use the **Job system** to batch multiple operations. This is more efficient as it reduces JNI overhead and allows the driver to optimize execution on RGA3.
+
+```kotlin
+// 1. Begin a new job
+val jobHandle = Rga.imbeginJob()
+
+if (jobHandle > 0) {
+    // 2. Add multiple tasks to the job
+    // Task 1: Rotate (src -> intermediate)
+    Rga.imrotateTask(jobHandle, srcBuffer, intermediateBuffer, Rga.IM_HAL_TRANSFORM_ROT_90)
+    
+    // Task 2: Vertical Flip (intermediate -> dst)
+    Rga.imflipTask(jobHandle, intermediateBuffer, dstBuffer, Rga.IM_HAL_TRANSFORM_FLIP_V)
+
+    // 3. Submit and execute the job
+    val result = Rga.imendJob(jobHandle, Rga.IM_SYNC)
+
+    if (result == Rga.IM_STATUS_SUCCESS) {
+        Rga.copyRgaBufferToBitmap(dstBuffer, dstBitmap)
+    }
+}
+```
+
 ## Project Structure
 
 - `librga/`: The core Android Library module.
@@ -101,6 +125,7 @@ This Android wrapper is built based on the `im2d` API provided by the official r
 
 ## Supported Operations
 
+- **Job / Multi-tasking (Batch Processing)**
 - Copy
 - Resize
 - Rescale
@@ -200,11 +225,19 @@ data class RgaRect(
 
 ### Core RGA Operations
 
+#### Job Management
+```kotlin
+external fun imbeginJob(flags: Long = 0): Long
+external fun imendJob(jobHandle: Long, syncMode: Int = IM_SYNC): Int
+external fun imcancelJob(jobHandle: Long): Int
+```
+
 #### Copy
 Copies source image to destination.
 
 ```kotlin
 external fun imcopy(src: RgaBuffer, dst: RgaBuffer): Int
+external fun imcopyTask(jobHandle: Long, src: RgaBuffer, dst: RgaBuffer): Int
 ```
 
 **Example:**
@@ -212,9 +245,8 @@ external fun imcopy(src: RgaBuffer, dst: RgaBuffer): Int
 val srcBuffer = Rga.createRgaBufferFromBitmap(sourceBitmap)
 val dstBuffer = Rga.createRgaBufferFromBitmap(destinationBitmap)
 val result = Rga.imcopy(srcBuffer, dstBuffer)
-if (result == Rga.IM_STATUS_SUCCESS) {
-    // Copy successful
-}
+// Or use Task API inside a job:
+// Rga.imcopyTask(jobHandle, srcBuffer, dstBuffer)
 ```
 
 #### Resize
@@ -222,6 +254,7 @@ Resizes source image to destination dimensions.
 
 ```kotlin
 external fun imresize(src: RgaBuffer, dst: RgaBuffer, fx: Double = 0.0, fy: Double = 0.0): Int
+external fun imresizeTask(jobHandle: Long, src: RgaBuffer, dst: RgaBuffer, fx: Double = 0.0, fy: Double = 0.0): Int
 ```
 
 **Example:**
@@ -236,6 +269,7 @@ Rescales source image to destination dimensions using specific scale factors.
 
 ```kotlin
 external fun imrescale(src: RgaBuffer, dst: RgaBuffer, fx: Double, fy: Double): Int
+external fun imrescaleTask(jobHandle: Long, src: RgaBuffer, dst: RgaBuffer, fx: Double, fy: Double): Int
 ```
 
 **Example:**
@@ -246,103 +280,45 @@ val result = Rga.imrescale(srcBuffer, dstBuffer, 0.5, 0.5) // Scale to 50%
 ```
 
 #### Crop
-Crops source image to destination using a rectangular region.
-
 ```kotlin
 external fun imcrop(src: RgaBuffer, dst: RgaBuffer, rect: RgaRect): Int
-```
-
-**Example:**
-```kotlin
-val cropRect = Rga.RgaRect(10, 10, 100, 100) // x, y, width, height
-val srcBuffer = Rga.createRgaBufferFromBitmap(sourceBitmap)
-val dstBuffer = Rga.createRgaBufferFromBitmap(destinationBitmap)
-val result = Rga.imcrop(srcBuffer, dstBuffer, cropRect)
+external fun imcropTask(jobHandle: Long, src: RgaBuffer, dst: RgaBuffer, rect: RgaRect): Int
 ```
 
 #### Rotate
-Rotates source image to destination.
-
 ```kotlin
 external fun imrotate(src: RgaBuffer, dst: RgaBuffer, rotation: Int): Int
-```
-
-**Example:**
-```kotlin
-val srcBuffer = Rga.createRgaBufferFromBitmap(sourceBitmap)
-val dstBuffer = Rga.createRgaBufferFromBitmap(destinationBitmap)
-val result = Rga.imrotate(srcBuffer, dstBuffer, Rga.IM_HAL_TRANSFORM_ROT_90) // 90° rotation
+external fun imrotateTask(jobHandle: Long, src: RgaBuffer, dst: RgaBuffer, rotation: Int): Int
 ```
 
 #### Flip
-Flips source image to destination.
-
 ```kotlin
 external fun imflip(src: RgaBuffer, dst: RgaBuffer, mode: Int): Int
-```
-
-**Example:**
-```kotlin
-val srcBuffer = Rga.createRgaBufferFromBitmap(sourceBitmap)
-val dstBuffer = Rga.createRgaBufferFromBitmap(destinationBitmap)
-val result = Rga.imflip(srcBuffer, dstBuffer, Rga.IM_HAL_TRANSFORM_FLIP_H) // Horizontal flip
+external fun imflipTask(jobHandle: Long, src: RgaBuffer, dst: RgaBuffer, mode: Int): Int
 ```
 
 #### Translate
-Translates (moves) source image to destination.
-
 ```kotlin
 external fun imtranslate(src: RgaBuffer, dst: RgaBuffer, x: Int, y: Int): Int
-```
-
-**Example:**
-```kotlin
-val srcBuffer = Rga.createRgaBufferFromBitmap(sourceBitmap)
-val dstBuffer = Rga.createRgaBufferFromBitmap(destinationBitmap)
-val result = Rga.imtranslate(srcBuffer, dstBuffer, 50, 50) // Move 50px right and down
+external fun imtranslateTask(jobHandle: Long, src: RgaBuffer, dst: RgaBuffer, x: Int, y: Int): Int
 ```
 
 #### Blend
-Blends source image over destination.
-
 ```kotlin
 external fun imblend(src: RgaBuffer, dst: RgaBuffer, mode: Int = IM_ALPHA_BLEND_SRC_OVER): Int
-```
-
-**Example:**
-```kotlin
-val srcBuffer = Rga.createRgaBufferFromBitmap(foregroundBitmap)
-val dstBuffer = Rga.createRgaBufferFromBitmap(backgroundBitmap)
-val result = Rga.imblend(srcBuffer, dstBuffer, Rga.IM_ALPHA_BLEND_SRC_OVER)
+external fun imblendTask(jobHandle: Long, src: RgaBuffer, dst: RgaBuffer, mode: Int = IM_ALPHA_BLEND_SRC_OVER): Int
 ```
 
 #### Composite
-Composites two source images to destination.
-
 ```kotlin
 external fun imcomposite(srcA: RgaBuffer, srcB: RgaBuffer, dst: RgaBuffer, mode: Int = IM_ALPHA_BLEND_SRC_OVER): Int
-```
-
-**Example:**
-```kotlin
-val srcABuffer = Rga.createRgaBufferFromBitmap(foregroundBitmap)
-val srcBBuffer = Rga.createRgaBufferFromBitmap(backgroundBitmap)
-val dstBuffer = Rga.createRgaBufferFromBitmap(resultBitmap)
-val result = Rga.imcomposite(srcABuffer, srcBBuffer, dstBuffer, Rga.IM_ALPHA_BLEND_SRC_OVER)
+external fun imcompositeTask(jobHandle: Long, srcA: RgaBuffer, srcB: RgaBuffer, dst: RgaBuffer, mode: Int = IM_ALPHA_BLEND_SRC_OVER): Int
 ```
 
 #### Color Format Conversion
-Converts color format from source to destination.
-
 ```kotlin
 external fun imcvtcolor(src: RgaBuffer, dst: RgaBuffer, sfmt: Int, dfmt: Int): Int
-```
-
-**Example:**
-```kotlin
-val srcBuffer = Rga.createRgaBufferFromBitmap(sourceBitmap, Rga.RK_FORMAT_RGBA_8888)
-val dstBuffer = Rga.createRgaBufferFromBitmap(destinationBitmap, Rga.RK_FORMAT_BGRA_8888)
-val result = Rga.imcvtcolor(srcBuffer, dstBuffer, Rga.RK_FORMAT_RGBA_8888, Rga.RK_FORMAT_BGRA_8888)
+external fun imcvtcolorTask(jobHandle: Long, src: RgaBuffer, dst: RgaBuffer, sfmt: Int, dfmt: Int): Int
 ```
 
 ### Helper Methods

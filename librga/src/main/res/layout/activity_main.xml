@@ -122,5 +122,76 @@
             android:text="Test YUV to Bitmap"
             android:layout_marginBottom="8dp"/>
 
+        <Button
+            android:id="@+id/btnTestJob"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Test RGA Job (Multi-task)"
+            android:layout_marginBottom="8dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Individual Task Tests:"
+            android:textStyle="bold"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp"/>
+
+        <Button
+            android:id="@+id/btnTestCopyTask"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Test Copy Task"
+            android:layout_marginBottom="8dp"/>
+
+        <Button
+            android:id="@+id/btnTestResizeTask"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Test Resize Task"
+            android:layout_marginBottom="8dp"/>
+
+        <Button
+            android:id="@+id/btnTestCropTask"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Test Crop Task"
+            android:layout_marginBottom="8dp"/>
+
+        <Button
+            android:id="@+id/btnTestRotateTask"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Test Rotate Task"
+            android:layout_marginBottom="8dp"/>
+
+        <Button
+            android:id="@+id/btnTestFlipTask"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Test Flip Task"
+            android:layout_marginBottom="8dp"/>
+
+        <Button
+            android:id="@+id/btnTestTranslateTask"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Test Translate Task"
+            android:layout_marginBottom="8dp"/>
+
+        <Button
+            android:id="@+id/btnTestBlendTask"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Test Blend Task"
+            android:layout_marginBottom="8dp"/>
+
+        <Button
+            android:id="@+id/btnTestConvertColorTask"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Test Color Conversion Task"
+            android:layout_marginBottom="8dp"/>
+
     </LinearLayout>
 </ScrollView>

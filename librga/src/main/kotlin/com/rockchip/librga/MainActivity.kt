@@ -27,6 +27,15 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnTestBlend: Button
     private lateinit var btnTestConvertColor: Button
     private lateinit var btnTestYuvToBitmap: Button
+    private lateinit var btnTestJob: Button
+    private lateinit var btnTestCopyTask: Button
+    private lateinit var btnTestResizeTask: Button
+    private lateinit var btnTestCropTask: Button
+    private lateinit var btnTestRotateTask: Button
+    private lateinit var btnTestFlipTask: Button
+    private lateinit var btnTestTranslateTask: Button
+    private lateinit var btnTestBlendTask: Button
+    private lateinit var btnTestConvertColorTask: Button
 
     private var originalBitmap: Bitmap? = null
     private var processedBitmap: Bitmap? = null
@@ -61,6 +70,15 @@ class MainActivity : AppCompatActivity() {
         btnTestBlend = findViewById(R.id.btnTestBlend)
         btnTestConvertColor = findViewById(R.id.btnTestConvertColor)
         btnTestYuvToBitmap = findViewById(R.id.btnTestYuvToBitmap)
+        btnTestJob = findViewById(R.id.btnTestJob)
+        btnTestCopyTask = findViewById(R.id.btnTestCopyTask)
+        btnTestResizeTask = findViewById(R.id.btnTestResizeTask)
+        btnTestCropTask = findViewById(R.id.btnTestCropTask)
+        btnTestRotateTask = findViewById(R.id.btnTestRotateTask)
+        btnTestFlipTask = findViewById(R.id.btnTestFlipTask)
+        btnTestTranslateTask = findViewById(R.id.btnTestTranslateTask)
+        btnTestBlendTask = findViewById(R.id.btnTestBlendTask)
+        btnTestConvertColorTask = findViewById(R.id.btnTestConvertColorTask)
     }
 
     private fun setupClickListeners() {
@@ -75,6 +93,15 @@ class MainActivity : AppCompatActivity() {
         btnTestBlend.setOnClickListener { testBlend() }
         btnTestConvertColor.setOnClickListener { testConvertColor() }
         btnTestYuvToBitmap.setOnClickListener { testYuvToBitmap() }
+        btnTestJob.setOnClickListener { testJob() }
+        btnTestCopyTask.setOnClickListener { testCopyTask() }
+        btnTestResizeTask.setOnClickListener { testResizeTask() }
+        btnTestCropTask.setOnClickListener { testCropTask() }
+        btnTestRotateTask.setOnClickListener { testRotateTask() }
+        btnTestFlipTask.setOnClickListener { testFlipTask() }
+        btnTestTranslateTask.setOnClickListener { testTranslateTask() }
+        btnTestBlendTask.setOnClickListener { testBlendTask() }
+        btnTestConvertColorTask.setOnClickListener { testConvertColorTask() }
     }
 
     private fun generateTestImage() {
@@ -144,36 +171,48 @@ class MainActivity : AppCompatActivity() {
             try {
                 updateResultText("Running all tests...\n")
 
-                // Run each test sequentially with delays
+                // Run original tests
                 testCopyOnUiThread()
-                Thread.sleep(2000)
-
+                Thread.sleep(1000)
                 testResizeOnUiThread()
-                Thread.sleep(2000)
-
-                testRescaleOnUiThread()
-                Thread.sleep(2000)
-
+                Thread.sleep(1000)
                 testCropOnUiThread()
-                Thread.sleep(2000)
-
+                Thread.sleep(1000)
                 testRotateOnUiThread()
-                Thread.sleep(2000)
-
+                Thread.sleep(1000)
                 testFlipOnUiThread()
-                Thread.sleep(2000)
-
+                Thread.sleep(1000)
                 testTranslateOnUiThread()
-                Thread.sleep(2000)
-
+                Thread.sleep(1000)
                 testBlendOnUiThread()
-                Thread.sleep(2000)
-
+                Thread.sleep(1000)
                 testConvertColorOnUiThread()
-                Thread.sleep(2000)
-
+                Thread.sleep(1000)
                 testYuvToBitmapOnUiThread()
-                Thread.sleep(2000)
+                Thread.sleep(1000)
+
+                // Run new Multi-task Job test
+                testJobOnUiThread()
+                Thread.sleep(1500)
+
+                // Run individual Task tests
+                updateResultTextOnUiThread("\n--- Running Individual Task Tests ---")
+                testCopyTaskOnUiThread()
+                Thread.sleep(1000)
+                testResizeTaskOnUiThread()
+                Thread.sleep(1000)
+                testCropTaskOnUiThread()
+                Thread.sleep(1000)
+                testRotateTaskOnUiThread()
+                Thread.sleep(1000)
+                testFlipTaskOnUiThread()
+                Thread.sleep(1000)
+                testTranslateTaskOnUiThread()
+                Thread.sleep(1000)
+                testBlendTaskOnUiThread()
+                Thread.sleep(1000)
+                testConvertColorTaskOnUiThread()
+                Thread.sleep(1000)
 
                 updateResultTextOnUiThread("\nAll tests completed!")
             } catch (e: Exception) {
@@ -181,6 +220,42 @@ class MainActivity : AppCompatActivity() {
                 updateResultTextOnUiThread("Error running tests: ${e.message}")
             }
         }.start()
+    }
+
+    private fun testCopyTaskOnUiThread() {
+        runOnUiThread { testCopyTask() }
+    }
+
+    private fun testResizeTaskOnUiThread() {
+        runOnUiThread { testResizeTask() }
+    }
+
+    private fun testCropTaskOnUiThread() {
+        runOnUiThread { testCropTask() }
+    }
+
+    private fun testRotateTaskOnUiThread() {
+        runOnUiThread { testRotateTask() }
+    }
+
+    private fun testFlipTaskOnUiThread() {
+        runOnUiThread { testFlipTask() }
+    }
+
+    private fun testTranslateTaskOnUiThread() {
+        runOnUiThread { testTranslateTask() }
+    }
+
+    private fun testBlendTaskOnUiThread() {
+        runOnUiThread { testBlendTask() }
+    }
+
+    private fun testConvertColorTaskOnUiThread() {
+        runOnUiThread { testConvertColorTask() }
+    }
+
+    private fun testJobOnUiThread() {
+        runOnUiThread { testJob() }
     }
 
     private fun testResizeOnUiThread() {
@@ -552,6 +627,161 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Log.e("MainActivity", "Error in testConvertColor", e)
                 updateResultTextOnUiThread("Color conversion test: ERROR - ${e.message}")
+            }
+        }.start()
+    }
+
+    private fun testJob() {
+        updateResultTextOnUiThread("Running Job/Task test...")
+        Thread {
+            try {
+                val srcBitmap = originalBitmap ?: return@Thread
+                val dstBitmap = Bitmap.createBitmap(srcBitmap.width, srcBitmap.height, Bitmap.Config.ARGB_8888)
+
+                // Create RgaBuffers
+                val srcBuffer = Rga.createRgaBufferFromBitmap(srcBitmap)
+                val dstBuffer = Rga.createRgaBufferFromBitmap(dstBitmap)
+
+                // 1. Begin Job
+                val jobHandle = Rga.imbeginJob()
+                if (jobHandle <= 0L) {
+                    updateResultTextOnUiThread("Job test: FAILED to begin job")
+                    return@Thread
+                }
+
+                // 2. Add tasks (Rotate then Flip)
+                // Note: We use dstBuffer as intermediate for demonstration
+                Rga.imrotateTask(jobHandle, srcBuffer, dstBuffer, Rga.IM_HAL_TRANSFORM_ROT_90)
+                Rga.imflipTask(jobHandle, dstBuffer, dstBuffer, Rga.IM_HAL_TRANSFORM_FLIP_V)
+
+                // 3. End Job
+                val result = Rga.imendJob(jobHandle)
+
+                if (result == Rga.IM_STATUS_SUCCESS) {
+                    Rga.copyRgaBufferToBitmap(dstBuffer, dstBitmap)
+                    updateProcessedBitmapWithErrorHandling(dstBitmap)
+                    updateResultTextOnUiThread("Job test: SUCCESS (Rotate 90 + Flip V)")
+                } else {
+                    updateResultTextOnUiThread("Job test: FAILED (result: $result)")
+                }
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error in testJob", e)
+                updateResultTextOnUiThread("Job test: ERROR - ${e.message}")
+            }
+        }.start()
+    }
+
+    private fun testCopyTask() {
+        executeSingleTaskTest("CopyTask") { handle, src, dst ->
+            Rga.imcopyTask(handle, src, dst)
+        }
+    }
+
+    private fun testResizeTask() {
+        executeSingleTaskTest("ResizeTask") { handle, src, dst ->
+            Rga.imresizeTask(handle, src, dst, 0.5, 0.5)
+        }
+    }
+
+    private fun testCropTask() {
+        executeSingleTaskTest("CropTask") { handle, src, dst ->
+            val cropRect = Rga.RgaRect(50, 50, 200, 200)
+            Rga.imcropTask(handle, src, dst, cropRect)
+        }
+    }
+
+    private fun testRotateTask() {
+        executeSingleTaskTest("RotateTask") { handle, src, dst ->
+            Rga.imrotateTask(handle, src, dst, Rga.IM_HAL_TRANSFORM_ROT_180)
+        }
+    }
+
+    private fun testFlipTask() {
+        executeSingleTaskTest("FlipTask") { handle, src, dst ->
+            Rga.imflipTask(handle, src, dst, Rga.IM_HAL_TRANSFORM_FLIP_V)
+        }
+    }
+
+    private fun testTranslateTask() {
+        executeSingleTaskTest("TranslateTask") { handle, src, dst ->
+            Rga.imtranslateTask(handle, src, dst, 50, 50)
+        }
+    }
+
+    private fun testBlendTask() {
+        updateResultTextOnUiThread("Running BlendTask test...")
+        Thread {
+            try {
+                val srcBitmap = originalBitmap ?: return@Thread
+                val overlay = Bitmap.createBitmap(srcBitmap.width, srcBitmap.height, Bitmap.Config.ARGB_8888)
+                Canvas(overlay).drawColor(Color.argb(100, 0, 255, 0))
+
+                val dstBitmap = Bitmap.createBitmap(srcBitmap.width, srcBitmap.height, Bitmap.Config.ARGB_8888)
+
+                val srcBuf = Rga.createRgaBufferFromBitmap(srcBitmap)
+                val overlayBuf = Rga.createRgaBufferFromBitmap(overlay)
+                val dstBuf = Rga.createRgaBufferFromBitmap(dstBitmap)
+
+                val handle = Rga.imbeginJob()
+                Rga.imcompositeTask(handle, overlayBuf, srcBuf, dstBuf, Rga.IM_ALPHA_BLEND_SRC_OVER)
+                val result = Rga.imendJob(handle)
+
+                if (result == Rga.IM_STATUS_SUCCESS) {
+                    Rga.copyRgaBufferToBitmap(dstBuf, dstBitmap)
+                    updateProcessedBitmapWithErrorHandling(dstBitmap)
+                    updateResultTextOnUiThread("BlendTask test: SUCCESS")
+                } else {
+                    updateResultTextOnUiThread("BlendTask test: FAILED ($result)")
+                }
+            } catch (e: Exception) {
+                updateResultTextOnUiThread("BlendTask test: ERROR ${e.message}")
+            }
+        }.start()
+    }
+
+    private fun testConvertColorTask() {
+        executeSingleTaskTest("ConvertColorTask") { handle, src, dst ->
+            Rga.imcvtcolorTask(handle, src, dst, Rga.RK_FORMAT_RGBA_8888, Rga.RK_FORMAT_BGRA_8888)
+        }
+    }
+
+    /**
+     * Helper to execute a single task within a job.
+     */
+    private fun executeSingleTaskTest(name: String, taskAdder: (Long, Rga.RgaBuffer, Rga.RgaBuffer) -> Int) {
+        updateResultTextOnUiThread("Running $name test...")
+        Thread {
+            try {
+                val srcBitmap = originalBitmap ?: return@Thread
+                // Most tasks here use same size dst for simplicity, except resize/crop if we wanted but let's keep it simple
+                val dstWidth = if (name == "ResizeTask") (srcBitmap.width * 0.5).toInt() else if (name == "CropTask") 200 else srcBitmap.width
+                val dstHeight = if (name == "ResizeTask") (srcBitmap.height * 0.5).toInt() else if (name == "CropTask") 200 else srcBitmap.height
+                
+                val dstBitmap = Bitmap.createBitmap(dstWidth, dstHeight, Bitmap.Config.ARGB_8888)
+
+                val srcBuf = Rga.createRgaBufferFromBitmap(srcBitmap)
+                val dstBuf = Rga.createRgaBufferFromBitmap(dstBitmap)
+
+                val handle = Rga.imbeginJob()
+                if (handle <= 0) {
+                    updateResultTextOnUiThread("$name: Failed to begin job")
+                    return@Thread
+                }
+
+                taskAdder(handle, srcBuf, dstBuf)
+
+                val result = Rga.imendJob(handle)
+
+                if (result == Rga.IM_STATUS_SUCCESS) {
+                    Rga.copyRgaBufferToBitmap(dstBuf, dstBitmap)
+                    updateProcessedBitmapWithErrorHandling(dstBitmap)
+                    updateResultTextOnUiThread("$name: SUCCESS")
+                } else {
+                    updateResultTextOnUiThread("$name: FAILED ($result)")
+                }
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error in $name", e)
+                updateResultTextOnUiThread("$name: ERROR ${e.message}")
             }
         }.start()
     }

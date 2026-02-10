@@ -222,4 +222,101 @@ Java_com_rockchip_librga_Rga_imcvtcolor(JNIEnv *env, jobject thiz, jobject src, 
     return improcess(srcBuf, dstBuf, {}, {}, {}, {}, -1, NULL, &opt, 0);
 }
 
+JNIEXPORT jlong JNICALL
+Java_com_rockchip_librga_Rga_imbeginJob(JNIEnv *env, jobject thiz, jlong flags) {
+    // 设置当前线程默认调度到 RGA3 核心，这将影响该线程后续创建的任务
+    imconfig(IM_CONFIG_SCHEDULER_CORE, IM_SCHEDULER_RGA3_CORE0 | IM_SCHEDULER_RGA3_CORE1);
+    return (jlong)imbeginJob((uint64_t)flags);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_rockchip_librga_Rga_imendJob(JNIEnv *env, jobject thiz, jlong jobHandle, jint syncMode) {
+    return imendJob((im_job_handle_t)jobHandle, (int)syncMode);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_rockchip_librga_Rga_imcancelJob(JNIEnv *env, jobject thiz, jlong jobHandle) {
+    return imcancelJob((im_job_handle_t)jobHandle);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_rockchip_librga_Rga_imcopyTask(JNIEnv *env, jobject thiz, jlong jobHandle, jobject src, jobject dst) {
+    rga_buffer_t srcBuf = getRgaBuffer(env, src);
+    rga_buffer_t dstBuf = getRgaBuffer(env, dst);
+    return imcopyTask((im_job_handle_t)jobHandle, srcBuf, dstBuf);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_rockchip_librga_Rga_imresizeTask(JNIEnv *env, jobject thiz, jlong jobHandle, jobject src, jobject dst, jdouble fx, jdouble fy) {
+    rga_buffer_t srcBuf = getRgaBuffer(env, src);
+    rga_buffer_t dstBuf = getRgaBuffer(env, dst);
+    return imresizeTask((im_job_handle_t)jobHandle, srcBuf, dstBuf, fx, fy);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_rockchip_librga_Rga_imrescaleTask(JNIEnv *env, jobject thiz, jlong jobHandle, jobject src, jobject dst, jdouble fx, jdouble fy) {
+    rga_buffer_t srcBuf = getRgaBuffer(env, src);
+    rga_buffer_t dstBuf = getRgaBuffer(env, dst);
+    im_rect srect = {0, 0, srcBuf.width, srcBuf.height};
+    im_rect drect = {0, 0, (int)(srcBuf.width * fx), (int)(srcBuf.height * fy)};
+
+    im_opt_t opt;
+    memset(&opt, 0, sizeof(im_opt_t));
+    opt.version = RGA_CURRENT_API_VERSION;
+    opt.core = IM_SCHEDULER_RGA3_CORE0 | IM_SCHEDULER_RGA3_CORE1;
+
+    return improcessTask((im_job_handle_t)jobHandle, srcBuf, dstBuf, {}, srect, drect, {}, &opt, 0);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_rockchip_librga_Rga_imcropTask(JNIEnv *env, jobject thiz, jlong jobHandle, jobject src, jobject dst, jobject rect) {
+    rga_buffer_t srcBuf = getRgaBuffer(env, src);
+    rga_buffer_t dstBuf = getRgaBuffer(env, dst);
+    im_rect imRect = getRgaRect(env, rect);
+    return imcropTask((im_job_handle_t)jobHandle, srcBuf, dstBuf, imRect);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_rockchip_librga_Rga_imrotateTask(JNIEnv *env, jobject thiz, jlong jobHandle, jobject src, jobject dst, jint rotation) {
+    rga_buffer_t srcBuf = getRgaBuffer(env, src);
+    rga_buffer_t dstBuf = getRgaBuffer(env, dst);
+    return imrotateTask((im_job_handle_t)jobHandle, srcBuf, dstBuf, rotation);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_rockchip_librga_Rga_imflipTask(JNIEnv *env, jobject thiz, jlong jobHandle, jobject src, jobject dst, jint mode) {
+    rga_buffer_t srcBuf = getRgaBuffer(env, src);
+    rga_buffer_t dstBuf = getRgaBuffer(env, dst);
+    return imflipTask((im_job_handle_t)jobHandle, srcBuf, dstBuf, mode);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_rockchip_librga_Rga_imtranslateTask(JNIEnv *env, jobject thiz, jlong jobHandle, jobject src, jobject dst, jint x, jint y) {
+    rga_buffer_t srcBuf = getRgaBuffer(env, src);
+    rga_buffer_t dstBuf = getRgaBuffer(env, dst);
+    return imtranslateTask((im_job_handle_t)jobHandle, srcBuf, dstBuf, x, y);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_rockchip_librga_Rga_imblendTask(JNIEnv *env, jobject thiz, jlong jobHandle, jobject src, jobject dst, jint mode) {
+    rga_buffer_t srcBuf = getRgaBuffer(env, src);
+    rga_buffer_t dstBuf = getRgaBuffer(env, dst);
+    return imblendTask((im_job_handle_t)jobHandle, srcBuf, dstBuf, mode);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_rockchip_librga_Rga_imcompositeTask(JNIEnv *env, jobject thiz, jlong jobHandle, jobject srcA, jobject srcB, jobject dst, jint mode) {
+    rga_buffer_t srcABuf = getRgaBuffer(env, srcA);
+    rga_buffer_t srcBBuf = getRgaBuffer(env, srcB);
+    rga_buffer_t dstBuf = getRgaBuffer(env, dst);
+    return imcompositeTask((im_job_handle_t)jobHandle, srcABuf, srcBBuf, dstBuf, mode);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_rockchip_librga_Rga_imcvtcolorTask(JNIEnv *env, jobject thiz, jlong jobHandle, jobject src, jobject dst, jint sfmt, jint dfmt) {
+    rga_buffer_t srcBuf = getRgaBuffer(env, src);
+    rga_buffer_t dstBuf = getRgaBuffer(env, dst);
+    return imcvtcolorTask((im_job_handle_t)jobHandle, srcBuf, dstBuf, sfmt, dfmt);
+}
+
 } // extern "C"
